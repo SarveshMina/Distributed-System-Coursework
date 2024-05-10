@@ -72,7 +72,7 @@
     <configuration name="TestStoreClient" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="MAIN_CLASS_NAME" value="TestStoreClient" />
       <module name="courseworkDir" />
-      <option name="PROGRAM_PARAMETERS" value="4000 50000 to_store" />
+      <option name="PROGRAM_PARAMETERS" value="4000 15000 to_store" />
       <method v="2">
         <option name="Make" enabled="true" />
       </method>
@@ -100,7 +100,7 @@
       <updated>1715353033395</updated>
       <workItem from="1715353033399" duration="33000" />
       <workItem from="1715353071720" duration="5256000" />
-      <workItem from="1715363197433" duration="2713000" />
+      <workItem from="1715363197433" duration="5904000" />
     </task>
     <servers />
   </component>

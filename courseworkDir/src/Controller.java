@@ -3,13 +3,15 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Controller {
   private int port;
   private int replicationFactor;
-  private List<Socket> dstores = new ArrayList<>();
+  private List<Socket> dstores = new CopyOnWriteArrayList<>();
   private Map<String, List<Socket>> fileToDstoresMap = new ConcurrentHashMap<>();
   private Map<Socket, Integer> dstoreDetails = new ConcurrentHashMap<>();
+  private Map<String, Integer> ackCounts = new ConcurrentHashMap<>();
 
   public Controller(int port, int replicationFactor) {
     this.port = port;
@@ -33,22 +35,30 @@ public class Controller {
       BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
       PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
       String message;
-      while ((message = in.readLine()) != null) {  // Continuously read until the socket is closed
+      while ((message = in.readLine()) != null) {
+        if (message.trim().isEmpty()) {
+          continue; // Skip empty or malformed lines
+        }
         System.out.println("Received message: " + message);
-        if (message.startsWith("JOIN")) {
-          handleJoin(socket, out, message);
-        } else if (message.startsWith("STORE")) {
-          handleStoreRequest(message, out);
-        } else if (message.startsWith("STORE_ACK")) {
-          handleStoreAck(message);
+        try {
+          if (message.startsWith("JOIN")) {
+            handleJoin(socket, out, message);
+          } else if (message.startsWith("STORE")) {
+            handleStoreRequest(socket, message, out);
+          } else if (message.startsWith("STORE_ACK")) {
+            handleStoreAck(message);
+          }
+        } catch (Exception e) {
+          System.out.println("Error handling message: " + message + " Error: " + e.getMessage());
         }
       }
       System.out.println("Connection closed by client: " + socket.getInetAddress().getHostAddress());
     } catch (IOException e) {
       System.out.println("Failed to handle connection: " + e.getMessage());
+    } finally {
+      dstores.remove(socket);
     }
   }
-
 
   private void handleJoin(Socket socket, PrintWriter out, String message) {
     try {
@@ -63,8 +73,12 @@ public class Controller {
     }
   }
 
-  private void handleStoreRequest(String message, PrintWriter out) {
+  private void handleStoreRequest(Socket clientSocket, String message, PrintWriter out) {
     String[] parts = message.split(" ");
+    if (parts.length < 3) {
+      out.println("ERROR_MALFORMED_COMMAND");
+      return;
+    }
     String filename = parts[1];
     if (fileToDstoresMap.containsKey(filename)) {
       out.println("ERROR_FILE_ALREADY_EXISTS");
@@ -72,21 +86,28 @@ public class Controller {
       out.println("ERROR_NOT_ENOUGH_DSTORES");
     } else {
       List<Socket> selectedDstores = selectDstores();
-      String response = "STORE_TO " + formatDstorePorts(selectedDstores);
-      out.println(response);
-      fileToDstoresMap.put(filename, new ArrayList<>(selectedDstores));
-      System.out.println("Sent STORE_TO for " + filename + " to ports: " + response);
+      if (selectedDstores.size() < replicationFactor) {
+        out.println("ERROR_NOT_ENOUGH_DSTORES");
+      } else {
+        String response = "STORE_TO " + formatDstorePorts(selectedDstores);
+        out.println(response);
+        fileToDstoresMap.put(filename, new ArrayList<>(selectedDstores));
+        ackCounts.put(filename, replicationFactor);
+        System.out.println("Sent STORE_TO for " + filename + " to ports: " + response);
+      }
     }
   }
 
   private void handleStoreAck(String message) {
     String[] parts = message.split(" ");
+    if (parts.length < 2) return; // Malformed message
     String filename = parts[1];
-    List<Socket> list = fileToDstoresMap.get(filename);
-    list.removeIf(s -> !s.isConnected());
-    if (list.isEmpty()) {
+    ackCounts.computeIfPresent(filename, (key, val) -> val - 1);
+    if (ackCounts.getOrDefault(filename, 0) <= 0) {
       fileToDstoresMap.remove(filename);
+      ackCounts.remove(filename);
       System.out.println("STORE_COMPLETE for " + filename);
+      // Here we would notify the client that the STORE operation is complete
     }
   }
 
@@ -109,7 +130,7 @@ public class Controller {
 
   public static void main(String[] args) {
     if (args.length != 2) {
-      System.out.println("Usage: java Controller <cport> <R> <timeout> <rebalance_period>");
+      System.out.println("Usage: java Controller <cport> <R>");
       return;
     }
     int cport = Integer.parseInt(args[0]);

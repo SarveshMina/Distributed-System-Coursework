@@ -54,8 +54,8 @@ public class Dstore {
       // Read the command
       String command = in.readLine();
       System.out.println("Received command: " + command);
-      if (command != null && command.startsWith("STORE")) {
 
+      if (command != null && command.startsWith("STORE")) {
         String[] parts = command.split(" ");
         String filename = parts[1];
         int fileSize = Integer.valueOf(parts[2]);
@@ -71,6 +71,7 @@ public class Dstore {
         while ((blufen = rawInput.read(buffer)) != -1) {
           fileOut.write(buffer, 0, blufen);
         }
+
         controllerOut.println("STORE_ACK " + filename);
         System.out.println("Stored file: " + filename + " and sent ACK.");
       }
