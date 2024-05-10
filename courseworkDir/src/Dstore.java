@@ -6,17 +6,15 @@ public class Dstore {
   private int port;
   private int controllerPort;
   private File fileFolder;
-
   private Socket controllerSocket;
   private PrintWriter controllerOut;
-
 
   public Dstore(int port, int controllerPort, String fileFolderPath) {
     this.port = port;
     this.controllerPort = controllerPort;
     this.fileFolder = new File(fileFolderPath);
     if (!fileFolder.exists()) {
-      fileFolder.mkdirs(); // Ensure the directory exists
+      fileFolder.mkdirs();
     }
   }
 
@@ -26,7 +24,7 @@ public class Dstore {
       System.out.println("Dstore listening on port " + port);
       while (true) {
         Socket clientSocket = serverSocket.accept();
-        // Client handling logic could be added here
+        new Thread(() -> handleClient(clientSocket)).start();
       }
     } catch (IOException e) {
       System.out.println("Error starting Dstore on port " + port + ": " + e.getMessage());
@@ -37,23 +35,48 @@ public class Dstore {
     try {
       controllerSocket = new Socket("localhost", controllerPort);
       controllerOut = new PrintWriter(controllerSocket.getOutputStream(), true);
-      BufferedReader in = new BufferedReader(new InputStreamReader(controllerSocket.getInputStream()));
-
-      // Send the Dstore's listening port along with the JOIN message
       controllerOut.println("JOIN " + port);
-
-      // Read acknowledgement from the controller
-      String ack = in.readLine();
-      if ("ACK".equals(ack)) {
+      BufferedReader in = new BufferedReader(new InputStreamReader(controllerSocket.getInputStream()));
+      if ("ACK".equals(in.readLine())) {
         System.out.println("Joined Controller successfully on port " + port);
-        // Keep the socket open for further commands or till the application ends
-        // Consider adding a loop here to listen to commands from the controller
-      } else {
-        System.out.println("Failed to join controller, no ACK received.");
       }
     } catch (IOException e) {
       System.out.println("Failed to connect to Controller: " + e.getMessage());
-      // Consider a reconnect strategy here or close resources properly
+    }
+  }
+
+  private void handleClient(Socket clientSocket) {
+    try {
+      // Create streams for reading command and writing responses
+      BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+      PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+
+      // Read the command
+      String command = in.readLine();
+      System.out.println("Received command: " + command);
+      if (command != null && command.startsWith("STORE")) {
+
+        String[] parts = command.split(" ");
+        String filename = parts[1];
+        int fileSize = Integer.valueOf(parts[2]);
+        byte[] buffer = new byte[fileSize];
+        int blufen;
+
+        File file = new File(fileFolder, filename);
+        FileOutputStream fileOut = new FileOutputStream(file);
+        InputStream rawInput = clientSocket.getInputStream();
+        System.out.println("filename " + filename + " fileSize " + fileSize);
+        out.println("ACK");
+
+        while ((blufen = rawInput.read(buffer)) != -1) {
+          fileOut.write(buffer, 0, blufen);
+        }
+        controllerOut.println("STORE_ACK " + filename);
+        System.out.println("Stored file: " + filename + " and sent ACK.");
+      }
+    } catch (IOException e) {
+      System.out.println("Error handling client request: " + e.getMessage());
+      e.printStackTrace();
     }
   }
 

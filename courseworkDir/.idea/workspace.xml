@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
   <component name="ChangeListManager">
     <list default="true" id="48257fde-929e-4116-a9a2-1172dec21178" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
@@ -30,6 +33,11 @@
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
     "WebServerToolWindowFactoryState": "false",
     "last_opened_file_path": "C:/Users/Sarvesh Mina/OneDrive/Desktop/Everything/finalProject/Distributed-System-Coursework/courseworkDir/lib/mockito-all-1.10.19.jar",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
     "project.structure.last.edited": "Libraries",
     "project.structure.proportion": "0.0",
     "project.structure.side.proportion": "0.0",
@@ -44,6 +52,44 @@
       <recent name="" />
     </key>
   </component>
+  <component name="RunManager" selected="Application.TestStoreClient">
+    <configuration name="Controller" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="Controller" />
+      <module name="courseworkDir" />
+      <option name="PROGRAM_PARAMETERS" value="4000 2" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Dstore" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="Dstore" />
+      <module name="courseworkDir" />
+      <option name="PROGRAM_PARAMETERS" value="4001 4000 dstore1" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="TestStoreClient" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="TestStoreClient" />
+      <module name="courseworkDir" />
+      <option name="PROGRAM_PARAMETERS" value="4000 50000 to_store" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <list>
+      <item itemvalue="Application.TestStoreClient" />
+      <item itemvalue="Application.Controller" />
+      <item itemvalue="Application.Dstore" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Application.TestStoreClient" />
+        <item itemvalue="Application.Controller" />
+        <item itemvalue="Application.Dstore" />
+      </list>
+    </recent_temporary>
+  </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
@@ -53,7 +99,8 @@
       <option name="presentableId" value="Default" />
       <updated>1715353033395</updated>
       <workItem from="1715353033399" duration="33000" />
-      <workItem from="1715353071720" duration="268000" />
+      <workItem from="1715353071720" duration="5256000" />
+      <workItem from="1715363197433" duration="2713000" />
     </task>
     <servers />
   </component>
