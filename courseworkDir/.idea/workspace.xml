@@ -32,7 +32,7 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
     "WebServerToolWindowFactoryState": "false",
-    "last_opened_file_path": "C:/Users/Sarvesh Mina/OneDrive/Desktop/Everything/finalProject/Distributed-System-Coursework/courseworkDir/lib/mockito-all-1.10.19.jar",
+    "last_opened_file_path": "C:/Users/Sarvesh Mina/OneDrive/Desktop/Everything/finalProject/Distributed-System-Coursework/courseworkDir/lib",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -47,6 +47,8 @@
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="C:\Users\Sarvesh Mina\OneDrive\Desktop\Everything\finalProject\Distributed-System-Coursework\courseworkDir\lib" />
+      <recent name="C:\Users\Sarvesh Mina\OneDrive\Desktop\Everything\finalProject\Distributed-System-Coursework\courseworkDir\to_store" />
+      <recent name="C:\Users\Sarvesh Mina\OneDrive\Desktop\Everything\finalProject\Distributed-System-Coursework\courseworkDir\to_store2" />
     </key>
     <key name="CopyClassDialog.RECENTS_KEY">
       <recent name="" />
@@ -72,7 +74,7 @@
     <configuration name="TestStoreClient" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="MAIN_CLASS_NAME" value="TestStoreClient" />
       <module name="courseworkDir" />
-      <option name="PROGRAM_PARAMETERS" value="4000 15000 to_store" />
+      <option name="PROGRAM_PARAMETERS" value="4000 5000 to_store" />
       <method v="2">
         <option name="Make" enabled="true" />
       </method>
@@ -100,7 +102,8 @@
       <updated>1715353033395</updated>
       <workItem from="1715353033399" duration="33000" />
       <workItem from="1715353071720" duration="5256000" />
-      <workItem from="1715363197433" duration="5904000" />
+      <workItem from="1715363197433" duration="7113000" />
+      <workItem from="1715407869508" duration="12231000" />
     </task>
     <servers />
   </component>

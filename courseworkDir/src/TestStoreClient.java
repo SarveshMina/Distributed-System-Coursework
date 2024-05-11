@@ -28,6 +28,7 @@ public class TestStoreClient {
     Client client = new Client(controllerPort, timeout, Logger.LoggingType.ON_FILE_AND_TERMINAL);
     try {
       client.connect();
+      // Storing files
       for (File file : files) {
         try {
           System.out.println("Attempting to store file: " + file.getName());
@@ -38,8 +39,15 @@ public class TestStoreClient {
           e.printStackTrace();
         }
       }
+      // Loading the first file to check if load functionality works
+      if (files.length > 0) {
+        String filenameToLoad = files[0].getName();
+        System.out.println("Attempting to load file: " + filenameToLoad);
+        client.load(filenameToLoad);
+        System.out.println("File loaded successfully: " + filenameToLoad);
+      }
     } catch (IOException e) {
-      System.err.println("Failed to connect or error during file storage: " + e.getMessage());
+      System.err.println("Failed to connect or error during file storage/load: " + e.getMessage());
       e.printStackTrace();
     } finally {
       try {

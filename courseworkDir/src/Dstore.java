@@ -1,6 +1,9 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class Dstore {
   private int port;
@@ -8,6 +11,7 @@ public class Dstore {
   private File fileFolder;
   private Socket controllerSocket;
   private PrintWriter controllerOut;
+  private static final Logger logger = Logger.getLogger(Controller.class.getName());
 
   public Dstore(int port, int controllerPort, String fileFolderPath) {
     this.port = port;
@@ -47,37 +51,65 @@ public class Dstore {
 
   private void handleClient(Socket clientSocket) {
     try {
-      // Create streams for reading command and writing responses
       BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
       PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
-
-      // Read the command
       String command = in.readLine();
       System.out.println("Received command: " + command);
 
-      if (command != null && command.startsWith("STORE")) {
-        String[] parts = command.split(" ");
-        String filename = parts[1];
-        int fileSize = Integer.valueOf(parts[2]);
-        byte[] buffer = new byte[fileSize];
-        int blufen;
-
-        File file = new File(fileFolder, filename);
-        FileOutputStream fileOut = new FileOutputStream(file);
-        InputStream rawInput = clientSocket.getInputStream();
-        System.out.println("filename " + filename + " fileSize " + fileSize);
-        out.println("ACK");
-
-        while ((blufen = rawInput.read(buffer)) != -1) {
-          fileOut.write(buffer, 0, blufen);
+      if (command != null) {
+        if (command.startsWith("STORE")) {
+          handleStore(clientSocket, command);
+        } else if (command.startsWith("LOAD_DATA")) {
+          handleLoadData(clientSocket, command, out);
         }
-
-        controllerOut.println("STORE_ACK " + filename);
-        System.out.println("Stored file: " + filename + " and sent ACK.");
       }
     } catch (IOException e) {
       System.out.println("Error handling client request: " + e.getMessage());
-      e.printStackTrace();
+    }
+  }
+
+  private void handleStore(Socket clientSocket, String command) throws IOException {
+    String[] parts = command.split(" ");
+    String filename = parts[1];
+    int fileSize = Integer.parseInt(parts[2]);
+    byte[] buffer = new byte[fileSize];
+
+    File file = new File(fileFolder, filename);
+    try (FileOutputStream fileOut = new FileOutputStream(file);
+         InputStream rawInput = clientSocket.getInputStream();
+         PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)) {
+
+      out.println("ACK");
+      int bytesRead;
+      while ((bytesRead = rawInput.read(buffer)) != -1) {
+        fileOut.write(buffer, 0, bytesRead);
+      }
+
+      controllerOut.println("STORE_ACK " + filename);
+      System.out.println("Stored file: " + filename + " and sent ACK.");
+    }
+  }
+
+  private void handleLoadData(Socket clientSocket, String message, PrintWriter out) {
+    String[] parts = message.split(" ");
+    if (parts.length < 2) {
+      out.println("ERROR_MALFORMED_COMMAND");
+      return;
+    }
+    String filename = parts[1];
+    File file = new File(fileFolder, filename);
+    if (!file.exists()) {
+      out.println("ERROR_FILE_DOES_NOT_EXIST");
+      return;
+    }
+    try (InputStream fileInput = new FileInputStream(file)) {
+      byte[] buffer = new byte[4096];
+      int bytesRead;
+      while ((bytesRead = fileInput.read(buffer)) != -1) {
+        clientSocket.getOutputStream().write(buffer, 0, bytesRead);
+      }
+    } catch (IOException e) {
+      System.out.println("Failed to send file " + filename + ": " + e.getMessage());
     }
   }
 
