@@ -58,7 +58,7 @@
       <recent name="" />
     </key>
   </component>
-  <component name="RunManager" selected="Application.TestStoreClient2">
+  <component name="RunManager" selected="Application.Controller">
     <configuration name="Controller" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="MAIN_CLASS_NAME" value="Controller" />
       <module name="courseworkDir" />
@@ -78,7 +78,7 @@
     <configuration name="TestStoreClient" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="MAIN_CLASS_NAME" value="TestStoreClient" />
       <module name="courseworkDir" />
-      <option name="PROGRAM_PARAMETERS" value="4000 5000 to_store" />
+      <option name="PROGRAM_PARAMETERS" value="4000 10000 to_store" />
       <method v="2">
         <option name="Make" enabled="true" />
       </method>
@@ -99,9 +99,9 @@
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Application.TestStoreClient2" />
         <item itemvalue="Application.TestStoreClient" />
         <item itemvalue="Application.Controller" />
+        <item itemvalue="Application.TestStoreClient2" />
         <item itemvalue="Application.Dstore" />
       </list>
     </recent_temporary>
@@ -119,7 +119,7 @@
       <workItem from="1715363197433" duration="7113000" />
       <workItem from="1715407869508" duration="12231000" />
       <workItem from="1715538117562" duration="4293000" />
-      <workItem from="1715542561440" duration="6750000" />
+      <workItem from="1715542561440" duration="17769000" />
     </task>
     <servers />
   </component>

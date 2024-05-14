@@ -64,7 +64,11 @@ public class Dstore {
         if (command.startsWith("STORE")) {
           handleStore(clientSocket, command);
         } else if (command.startsWith("LOAD_DATA")) {
-          //TODO: Implement LOAD_DATA
+          handleLoadData(clientSocket, command);
+        } else if (command.startsWith("REMOVE")) {
+          handleRemove(clientSocket, command);
+        } else {
+          System.out.println("Unknown command: " + command);
         }
       }
     } catch (SocketTimeoutException e) {
@@ -95,6 +99,55 @@ public class Dstore {
       System.out.println("Stored file: " + filename + " and sent ACK.");
     }
   }
+
+  private void handleLoadData(Socket clientSocket, String command) throws IOException {
+    String[] parts = command.split(" ");
+    if (parts.length < 2) {
+      System.out.println("Malformed LOAD_DATA command");
+      return;
+    }
+    String filename = parts[1];
+    File file = new File(fileFolder, filename);
+    if (!file.exists()) {
+      PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+      out.println("ERROR_FILE_DOES_NOT_EXIST");
+      clientSocket.close();  // Close the connection if the file does not exist
+      return;
+    }
+
+    try (InputStream fileInput = new FileInputStream(file);
+         OutputStream clientOutput = clientSocket.getOutputStream()) {
+      byte[] buffer = new byte[4096];
+      int bytesRead;
+      while ((bytesRead = fileInput.read(buffer)) != -1) {
+        clientOutput.write(buffer, 0, bytesRead);
+      }
+      clientOutput.flush();
+      System.out.println("File " + filename + " sent to client.");
+    } catch (IOException e) {
+      System.out.println("Failed to send file " + filename + ": " + e.getMessage());
+      throw e;
+    }
+  }
+
+  private void handleRemove(Socket clientSocket, String command) throws IOException {
+    String[] parts = command.split(" ");
+    if (parts.length < 2) {
+      System.out.println("Malformed REMOVE command");
+      return;
+    }
+    String filename = parts[1];
+    File file = new File(fileFolder, filename);
+    PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+    if (file.exists() && file.delete()) {
+      out.println("REMOVE_ACK " + filename);
+      System.out.println("File " + filename + " removed successfully.");
+    } else {
+      out.println("ERROR_CANNOT_REMOVE_FILE");
+      System.out.println("Failed to remove file: " + filename);
+    }
+  }
+
 
   public static void main(String[] args) {
     if (args.length != 4) {

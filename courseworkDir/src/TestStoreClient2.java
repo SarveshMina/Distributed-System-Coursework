@@ -39,13 +39,13 @@ public class TestStoreClient2 {
           e.printStackTrace();
         }
       }
-//      // Loading the first file to check if load functionality works
-//      if (files.length > 0) {
-//        String filenameToLoad = files[0].getName();
-//        System.out.println("Attempting to load file: " + filenameToLoad);
-//        client.load(filenameToLoad);
-//        System.out.println("File loaded successfully: " + filenameToLoad);
-//      }
+      // Loading the first file to check if load functionality works
+      if (files.length > 0) {
+        String filenameToLoad = files[0].getName();
+        System.out.println("Attempting to load file: " + filenameToLoad);
+        client.load(filenameToLoad);
+        System.out.println("File loaded successfully: " + filenameToLoad);
+      }
     } catch (IOException e) {
       System.err.println("Failed to connect or error during file storage/load: " + e.getMessage());
       e.printStackTrace();
