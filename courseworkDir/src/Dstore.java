@@ -1,6 +1,7 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.nio.file.Files;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -12,10 +13,12 @@ public class Dstore {
   private Socket controllerSocket;
   private PrintWriter controllerOut;
   private static final Logger logger = Logger.getLogger(Controller.class.getName());
+  private int timeout;
 
-  public Dstore(int port, int controllerPort, String fileFolderPath) {
+  public Dstore(int port, int controllerPort, int timeout, String fileFolderPath) {
     this.port = port;
     this.controllerPort = controllerPort;
+    this.timeout = timeout;
     this.fileFolder = new File(fileFolderPath);
     if (!fileFolder.exists()) {
       fileFolder.mkdirs();
@@ -28,6 +31,7 @@ public class Dstore {
       System.out.println("Dstore listening on port " + port);
       while (true) {
         Socket clientSocket = serverSocket.accept();
+        clientSocket.setSoTimeout(timeout * 1000);  // Set timeout for the client socket
         new Thread(() -> handleClient(clientSocket)).start();
       }
     } catch (IOException e) {
@@ -60,9 +64,11 @@ public class Dstore {
         if (command.startsWith("STORE")) {
           handleStore(clientSocket, command);
         } else if (command.startsWith("LOAD_DATA")) {
-          handleLoadData(clientSocket, command, out);
+          //TODO: Implement LOAD_DATA
         }
       }
+    } catch (SocketTimeoutException e) {
+      System.out.println("Timeout occurred while handling client request: " + e.getMessage());
     } catch (IOException e) {
       System.out.println("Error handling client request: " + e.getMessage());
     }
@@ -90,38 +96,15 @@ public class Dstore {
     }
   }
 
-  private void handleLoadData(Socket clientSocket, String message, PrintWriter out) {
-    String[] parts = message.split(" ");
-    if (parts.length < 2) {
-      out.println("ERROR_MALFORMED_COMMAND");
-      return;
-    }
-    String filename = parts[1];
-    File file = new File(fileFolder, filename);
-    if (!file.exists()) {
-      out.println("ERROR_FILE_DOES_NOT_EXIST");
-      return;
-    }
-    try (InputStream fileInput = new FileInputStream(file)) {
-      byte[] buffer = new byte[4096];
-      int bytesRead;
-      while ((bytesRead = fileInput.read(buffer)) != -1) {
-        clientSocket.getOutputStream().write(buffer, 0, bytesRead);
-      }
-    } catch (IOException e) {
-      System.out.println("Failed to send file " + filename + ": " + e.getMessage());
-    }
-  }
-
-
   public static void main(String[] args) {
-    if (args.length != 3) {
-      System.out.println("Usage: java Dstore <port> <controllerPort> <fileFolder>");
+    if (args.length != 4) {
+      System.out.println("Usage: java Dstore <port> <controllerPort> <fileFolder> <timeout>");
       return;
     }
     int port = Integer.parseInt(args[0]);
     int controllerPort = Integer.parseInt(args[1]);
-    String fileFolder = args[2];
-    new Dstore(port, controllerPort, fileFolder).start();
+    int timeout = Integer.parseInt(args[2]);
+    String fileFolder = args[3];
+    new Dstore(port, controllerPort, timeout, fileFolder).start();
   }
 }

@@ -38,9 +38,10 @@
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "project.structure.last.edited": "Libraries",
+    "project.structure.last.edited": "SDKs",
     "project.structure.proportion": "0.0",
-    "project.structure.side.proportion": "0.0",
+    "project.structure.side.proportion": "0.16666667",
+    "settings.editor.selected.configurable": "preferences.lookFeel",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -50,15 +51,18 @@
       <recent name="C:\Users\Sarvesh Mina\OneDrive\Desktop\Everything\finalProject\Distributed-System-Coursework\courseworkDir\to_store" />
       <recent name="C:\Users\Sarvesh Mina\OneDrive\Desktop\Everything\finalProject\Distributed-System-Coursework\courseworkDir\to_store2" />
     </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\Sarvesh Mina\OneDrive\Desktop\Everything\finalProject\Distributed-System-Coursework\courseworkDir\to_store2" />
+    </key>
     <key name="CopyClassDialog.RECENTS_KEY">
       <recent name="" />
     </key>
   </component>
-  <component name="RunManager" selected="Application.TestStoreClient">
+  <component name="RunManager" selected="Application.TestStoreClient2">
     <configuration name="Controller" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="MAIN_CLASS_NAME" value="Controller" />
       <module name="courseworkDir" />
-      <option name="PROGRAM_PARAMETERS" value="4000 2" />
+      <option name="PROGRAM_PARAMETERS" value="4000 2 5000 1" />
       <method v="2">
         <option name="Make" enabled="true" />
       </method>
@@ -79,13 +83,23 @@
         <option name="Make" enabled="true" />
       </method>
     </configuration>
+    <configuration name="TestStoreClient2" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="TestStoreClient2" />
+      <module name="courseworkDir" />
+      <option name="PROGRAM_PARAMETERS" value="4000 5001 to_store2" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
     <list>
+      <item itemvalue="Application.TestStoreClient2" />
       <item itemvalue="Application.TestStoreClient" />
       <item itemvalue="Application.Controller" />
       <item itemvalue="Application.Dstore" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Application.TestStoreClient2" />
         <item itemvalue="Application.TestStoreClient" />
         <item itemvalue="Application.Controller" />
         <item itemvalue="Application.Dstore" />
@@ -104,6 +118,8 @@
       <workItem from="1715353071720" duration="5256000" />
       <workItem from="1715363197433" duration="7113000" />
       <workItem from="1715407869508" duration="12231000" />
+      <workItem from="1715538117562" duration="4293000" />
+      <workItem from="1715542561440" duration="6750000" />
     </task>
     <servers />
   </component>

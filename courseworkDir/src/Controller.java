@@ -2,27 +2,58 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.logging.Logger;
+import java.util.concurrent.*;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.logging.FileHandler;
 import java.util.logging.SimpleFormatter;
-
 
 public class Controller {
   private int port;
   private int replicationFactor;
   private List<Socket> dstores = new CopyOnWriteArrayList<>();
-  private Map<String, FileDetails> fileToDstoresMap = new ConcurrentHashMap<>();
+  private Index index = new Index();
   private Map<Socket, Integer> dstoreDetails = new ConcurrentHashMap<>();
   private Map<String, Integer> ackCounts = new ConcurrentHashMap<>();
+  private Map<String, Long> storeStartTimes = new ConcurrentHashMap<>();
+  private ScheduledExecutorService timeoutScheduler = Executors.newScheduledThreadPool(1);
   private static final Logger logger = Logger.getLogger(Controller.class.getName());
+  private int timeout;
+  private int rebalance_period;
 
-  public Controller(int port, int replicationFactor) {
+  public Controller(int port, int replicationFactor, int timeout, int rebalance_period) {
     this.port = port;
     this.replicationFactor = replicationFactor;
+    this.timeout = timeout;
+    this.rebalance_period = rebalance_period;
     configureLogger();
+    startTimeoutCheck();
+  }
+
+  private void configureLogger() {
+    try {
+      FileHandler fileHandler = new FileHandler("Controller.log", true);
+      fileHandler.setFormatter(new SimpleFormatter());
+      logger.addHandler(fileHandler);
+      logger.setLevel(Level.FINE);
+      logger.setUseParentHandlers(false);
+    } catch (IOException e) {
+      logger.log(Level.SEVERE, "Error setting up logger", e);
+      System.out.println("Error setting up logger");
+    }
+  }
+
+  private void startTimeoutCheck() {
+    timeoutScheduler.scheduleAtFixedRate(() -> {
+      long currentTime = System.currentTimeMillis();
+      storeStartTimes.forEach((filename, startTime) -> {
+        if (currentTime - startTime > timeout && ackCounts.containsKey(filename) && ackCounts.get(filename) > 0) {
+          ackCounts.remove(filename);
+          index.removeFile(filename);
+          logger.log(Level.WARNING, "Timeout expired for STORE operation of file: " + filename);
+        }
+      });
+    }, 0, 1, TimeUnit.SECONDS);
   }
 
   public void start() {
@@ -39,19 +70,6 @@ public class Controller {
     }
   }
 
-  private void configureLogger() {
-    try {
-      FileHandler fileHandler = new FileHandler("Controller.log", true);
-      fileHandler.setFormatter(new SimpleFormatter());
-      logger.addHandler(fileHandler);
-      logger.setLevel(Level.FINE);
-      logger.setUseParentHandlers(false);
-    } catch (IOException e) {
-      logger.log(Level.SEVERE, "Error setting up logger", e);
-      System.out.println("Error setting up logger");
-    }
-  }
-
   private void handleConnection(Socket socket) {
     try {
       BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -60,50 +78,45 @@ public class Controller {
       while ((message = in.readLine()) != null) {
         if (message.trim().isEmpty()) {
           logger.log(Level.INFO, "Received empty message");
-          System.out.println("Received empty message");
-          continue; // Skip empty or malformed lines
+          continue;
         }
         logger.log(Level.INFO, "Received message: " + message);
         System.out.println("Received message: " + message);
         String[] parts = message.split(" ");
         try {
-          if (parts[0].equals("JOIN")) {
-            handleJoin(socket, out, message);
-          } else if (parts[0].equals("STORE")) {
-            handleStoreRequest(socket, message, out);
-          } else if (parts[0].equals("STORE_ACK")) {
-            handleStoreAck(message);
-          } else if (parts[0].equals("LOAD")) {
-            handleLoadRequest(socket, message, out);
+          switch (parts[0]) {
+            case "JOIN":
+              handleJoin(socket, out, message);
+              break;
+            case "STORE":
+              handleStoreRequest(socket, message, out);
+              break;
+            case "STORE_ACK":
+              handleStoreAck(message);
+              break;
+            case "LOAD":
+              // TODO: Implement LOAD operation.
+              break;
           }
         } catch (Exception e) {
           logger.log(Level.SEVERE, "Error handling message: " + message + " Error: " + e.getMessage());
-          System.out.println("Error handling message: " + message + " Error: " + e.getMessage());
         }
       }
-      logger.log(Level.INFO, "Connection closed by client: " + socket.getInetAddress().getHostAddress());
-      System.out.println("Connection closed by client: " + socket.getInetAddress().getHostAddress());
     } catch (IOException e) {
       logger.log(Level.SEVERE, "Failed to handle connection: " + e.getMessage());
-      System.out.println("Failed to handle connection: " + e.getMessage());
     } finally {
       dstores.remove(socket);
     }
   }
 
   private void handleJoin(Socket socket, PrintWriter out, String message) {
-    try {
-      String[] parts = message.split(" ");
-      int dstorePort = Integer.parseInt(parts[1]);
-      dstoreDetails.put(socket, dstorePort);
-      dstores.add(socket);
-      out.println("ACK");
-      logger.log(Level.INFO, "Dstore joined from: " + socket.getInetAddress().getHostAddress() + ":" + dstorePort);
-      System.out.println("Dstore joined from: " + socket.getInetAddress().getHostAddress() + ":" + dstorePort);
-    } catch (NumberFormatException e) {
-      logger.log(Level.SEVERE, "Error parsing Dstore port: " + e.getMessage());
-      System.out.println("Error parsing Dstore port: " + e.getMessage());
-    }
+    String[] parts = message.split(" ");
+    int dstorePort = Integer.parseInt(parts[1]);
+    dstoreDetails.put(socket, dstorePort);
+    dstores.add(socket);
+    out.println("ACK");
+    System.out.println("Dstore joined from: " + dstorePort);
+    logger.log(Level.INFO, "Dstore joined from: " + socket.getInetAddress().getHostAddress() + ":" + dstorePort);
   }
 
   private void handleStoreRequest(Socket clientSocket, String message, PrintWriter out) {
@@ -114,7 +127,8 @@ public class Controller {
     }
     String filename = parts[1];
     int fileSize = Integer.parseInt(parts[2]);
-    if (fileToDstoresMap.containsKey(filename)) {
+
+    if (index.getFileState(filename) != null && !index.getFileState(filename).getStatus().equals("COMPLETE")) {
       out.println("ERROR_FILE_ALREADY_EXISTS");
     } else if (dstores.size() < replicationFactor) {
       out.println("ERROR_NOT_ENOUGH_DSTORES");
@@ -123,9 +137,12 @@ public class Controller {
       if (selectedDstores.size() < replicationFactor) {
         out.println("ERROR_NOT_ENOUGH_DSTORES");
       } else {
-        fileToDstoresMap.put(filename, new FileDetails(new ArrayList<>(selectedDstores), fileSize));
+        index.addFile(filename, new ArrayList<>(selectedDstores), fileSize);
         ackCounts.put(filename, replicationFactor);
+        storeStartTimes.put(filename, System.currentTimeMillis());
         String response = "STORE_TO " + formatDstorePorts(selectedDstores);
+        logger.log(Level.INFO, "Storing file: " + filename + " to Dstores: " + formatDstorePorts(selectedDstores));
+        System.out.println("Storing file: " + filename + " to Dstores: " + formatDstorePorts(selectedDstores));
         out.println(response);
       }
     }
@@ -135,49 +152,20 @@ public class Controller {
     String[] parts = message.split(" ");
     if (parts.length < 2) {
       logger.log(Level.SEVERE, "Malformed STORE_ACK message: " + message);
-      return; // Malformed message
+      return;
     }
     String filename = parts[1];
     Integer count = ackCounts.getOrDefault(filename, 0);
-    if (count <= 1) { // If this was the last needed ACK
+    if (count <= 1) {
       ackCounts.remove(filename);
-      FileDetails details = fileToDstoresMap.get(filename);
-      if (details == null || details.getDstoreSockets().isEmpty()) {
-        logger.log(Level.WARNING, "No Dstore sockets found for file: " + filename);
-      } else {
-        logger.log(Level.INFO, "STORE_COMPLETE for " + filename);
-        System.out.println("STORE_COMPLETE for " + filename);
-      }
+      index.markFileAsComplete(filename);
+      storeStartTimes.remove(filename);
+      logger.log(Level.INFO, "STORE_COMPLETE for " + filename);
+      System.out.println("STORE_COMPLETE for " + filename);
     } else {
       ackCounts.put(filename, count - 1);
     }
   }
-
-  private void handleLoadRequest(Socket clientSocket, String message, PrintWriter out) {
-    String[] parts = message.split(" ");
-    if (parts.length < 2) {
-      out.println("ERROR_MALFORMED_COMMAND");
-      logger.log(Level.SEVERE, "Malformed LOAD command: " + message);
-      return;
-    }
-
-    String filename = parts[1];
-    System.out.println("Processing LOAD for " + filename);
-    FileDetails details = new FileDetails(fileToDstoresMap.get(filename).getDstoreSockets(), fileToDstoresMap.get(filename).getFileSize());
-    if (details.getDstoreSockets().isEmpty()) {
-      out.println("ERROR_FILE_DOES_NOT_EXIST");
-    } else {
-      Socket selectedDstore = details.getDstoreSockets().get(new Random().nextInt(details.getDstoreSockets().size()));
-      Integer port = dstoreDetails.get(selectedDstore);
-      if (port == null) {
-        out.println("ERROR_DSTORE_UNAVAILABLE");
-        return;
-      }
-      out.println("LOAD_FROM " + port + " " + details.getFileSize());
-      logger.log(Level.INFO, "Sent LOAD_FROM for " + filename + " to client: LOAD_FROM " + port + " " + details.getFileSize());
-    }
-  }
-
 
   private List<Socket> selectDstores() {
     List<Socket> selected = new ArrayList<>(dstores);
@@ -197,12 +185,14 @@ public class Controller {
   }
 
   public static void main(String[] args) {
-    if (args.length != 2) {
-      System.out.println("Usage: java Controller <cport> <R>");
+    if (args.length < 4) {
+      System.out.println("Usage: java Controller <cport> <R> <timeout> <rebalance_period>");
       return;
     }
     int cport = Integer.parseInt(args[0]);
     int R = Integer.parseInt(args[1]);
-    new Controller(cport, R).start();
+    int timeout = Integer.parseInt(args[2]);
+    int rebalance_period = Integer.parseInt(args[3]);
+    new Controller(cport, R, timeout, rebalance_period).start();
   }
 }

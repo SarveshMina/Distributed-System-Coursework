@@ -1,7 +1,7 @@
 import java.io.File;
 import java.io.IOException;
 
-public class TestStoreClient {
+public class TestStoreClient2 {
 
   public static void main(String[] args) {
     if (args.length != 3) {
