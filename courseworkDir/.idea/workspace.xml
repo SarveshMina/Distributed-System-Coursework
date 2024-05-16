@@ -59,7 +59,7 @@
       <recent name="" />
     </key>
   </component>
-  <component name="RunManager" selected="Application.TestStoreClient">
+  <component name="RunManager" selected="Application.ClientMain">
     <configuration name="ClientMain" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="MAIN_CLASS_NAME" value="ClientMain" />
       <module name="courseworkDir" />
@@ -109,9 +109,9 @@
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Application.ClientMain" />
         <item itemvalue="Application.TestStoreClient" />
         <item itemvalue="Application.Controller" />
-        <item itemvalue="Application.ClientMain" />
         <item itemvalue="Application.TestStoreClient2" />
         <item itemvalue="Application.Dstore" />
       </list>
@@ -133,7 +133,7 @@
       <workItem from="1715542561440" duration="17769000" />
       <workItem from="1715782877529" duration="313000" />
       <workItem from="1715784292815" duration="12722000" />
-      <workItem from="1715815046956" duration="5974000" />
+      <workItem from="1715815046956" duration="6353000" />
     </task>
     <servers />
   </component>

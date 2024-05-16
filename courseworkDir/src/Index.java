@@ -1,6 +1,7 @@
 import java.net.Socket;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public class Index {
   private final ConcurrentHashMap<String, FileState> fileStates = new ConcurrentHashMap<>();
@@ -20,6 +21,7 @@ public class Index {
       state.status = "IN_PROGRESS";
     }
   }
+
   public void markFileAsComplete(String filename) {
     FileState state = fileStates.get(filename);
     if (state != null) {
@@ -33,6 +35,13 @@ public class Index {
 
   public FileState getFileState(String filename) {
     return fileStates.get(filename);
+  }
+
+  public List<String> getCompleteFiles() {
+    return fileStates.entrySet().stream()
+        .filter(entry -> "COMPLETE".equals(entry.getValue().getStatus()))
+        .map(entry -> entry.getKey())
+        .collect(Collectors.toList());
   }
 
   public static class FileState {

@@ -108,6 +108,9 @@ public class Controller {
             case "REMOVE_ACK":
               handleRemoveAck(message);
               break;
+            case "LIST":
+              handleListRequest(socket, out);
+              break;
           }
         } catch (Exception e) {
           logger.log(Level.SEVERE, "Error handling message: " + message + " Error: " + e.getMessage());
@@ -119,7 +122,6 @@ public class Controller {
       dstores.remove(socket);
     }
   }
-
 
   private void handleRemoveRequest(Socket clientSocket, String message, PrintWriter out) {
     String[] parts = message.split(" ");
@@ -153,8 +155,6 @@ public class Controller {
     }
   }
 
-
-
   private void handleRemoveAck(String message) {
     String[] parts = message.split(" ");
     if (parts.length < 2) {
@@ -174,7 +174,7 @@ public class Controller {
       if (clientSocket != null) {
         try {
           PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
-          out.println("REMOVE_COMPLETE");
+          out.println("REMOVE_COMPLETE " + filename);
         } catch (IOException e) {
           logger.log(Level.SEVERE, "Error sending REMOVE_COMPLETE to client: " + e.getMessage());
         }
@@ -184,7 +184,6 @@ public class Controller {
     }
   }
 
-
   private void handleJoin(Socket socket, PrintWriter out, String message) {
     String[] parts = message.split(" ");
     int dstorePort = Integer.parseInt(parts[1]);
@@ -193,32 +192,6 @@ public class Controller {
     out.println("ACK");
     System.out.println("Dstore joined from: " + dstorePort);
     logger.log(Level.INFO, "Dstore joined from: " + socket.getInetAddress().getHostAddress() + ":" + dstorePort);
-  }
-
-  private void handleRemove(Socket socket, PrintWriter out, String message) {
-    String[] parts = message.split(" ");
-    String filename = parts[1];
-    Index.FileState fileState = index.getFileState(filename);
-    if (fileState == null) {
-      out.println("ERROR_FILE_DOES_NOT_EXIST");
-    } else {
-      List<Socket> dstoreSockets = new ArrayList<>(fileState.getDstoreSockets());
-      if (dstoreSockets.isEmpty() || dstores.size() < replicationFactor) {
-        out.println("ERROR_NOT_ENOUGH_DSTORES");
-      } else {
-        for (Socket dstore : dstoreSockets) {
-          Integer port = dstoreDetails.get(dstore);
-          if (port != null) {
-            try {
-              PrintWriter dstoreOut = new PrintWriter(dstore.getOutputStream(), true);
-              dstoreOut.println("REMOVE " + filename);
-            } catch (IOException e) {
-              logger.log(Level.SEVERE, "Error sending REMOVE command to Dstore: " + e.getMessage());
-            }
-          }
-        }
-      }
-    }
   }
 
   private void handleStoreRequest(Socket clientSocket, String message, PrintWriter out) {
@@ -313,7 +286,6 @@ public class Controller {
     }
   }
 
-
   private void handleStoreAck(String message) {
     String[] parts = message.split(" ");
     if (parts.length < 2) {
@@ -334,13 +306,28 @@ public class Controller {
       if (clientSocket != null) {
         try {
           PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
-          out.println("STORE_COMPLETE");
+          out.println("STORE_COMPLETE " + filename);
         } catch (IOException e) {
           logger.log(Level.SEVERE, "Error sending STORE_COMPLETE to client: " + e.getMessage());
         }
       }
     } else {
       ackCounts.put(filename, count - 1);
+    }
+  }
+
+  private void handleListRequest(Socket clientSocket, PrintWriter out) {
+    if (dstores.size() < replicationFactor) {
+      out.println("ERROR_NOT_ENOUGH_DSTORES");
+      return;
+    }
+
+    List<String> completeFiles = index.getCompleteFiles();
+    if (completeFiles.isEmpty()) {
+      out.println("LIST");
+    } else {
+      String fileList = String.join(" ", completeFiles);
+      out.println("LIST " + fileList);
     }
   }
 
