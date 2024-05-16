@@ -123,8 +123,6 @@ public class Dstore {
             out.println("ERROR Invalid command");
         }
       }
-    } catch (SocketException e) {
-      System.out.println("Client disconnected: " + e.getMessage());
     } catch (IOException e) {
       System.out.println("Error handling client request: " + e.getMessage());
     } finally {

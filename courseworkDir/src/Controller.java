@@ -15,7 +15,9 @@ public class Controller {
   private Index index = new Index();
   private Map<Socket, Integer> dstoreDetails = new ConcurrentHashMap<>();
   private Map<String, Integer> ackCounts = new ConcurrentHashMap<>();
+  private Map<String, Socket> storeRequestClients = new ConcurrentHashMap<>();
   private Map<String, Long> storeStartTimes = new ConcurrentHashMap<>();
+  private Map<String, Socket> removeRequestClients = new ConcurrentHashMap<>();
   private ScheduledExecutorService timeoutScheduler = Executors.newScheduledThreadPool(1);
   private static final Logger logger = Logger.getLogger(Controller.class.getName());
   private int timeout;
@@ -119,7 +121,7 @@ public class Controller {
   }
 
 
-  private void handleRemoveRequest (Socket clientSocket, String message, PrintWriter out) {
+  private void handleRemoveRequest(Socket clientSocket, String message, PrintWriter out) {
     String[] parts = message.split(" ");
     if (parts.length < 2) {
       out.println("ERROR_MALFORMED_COMMAND");
@@ -134,6 +136,8 @@ public class Controller {
       if (dstoreSockets.isEmpty() || dstores.size() < replicationFactor) {
         out.println("ERROR_NOT_ENOUGH_DSTORES");
       } else {
+        removeRequestClients.put(filename, clientSocket);  // Track client socket
+        ackCounts.put(filename, dstoreSockets.size());     // Initialize ack count
         for (Socket dstore : dstoreSockets) {
           Integer port = dstoreDetails.get(dstore);
           if (port != null) {
@@ -149,6 +153,8 @@ public class Controller {
     }
   }
 
+
+
   private void handleRemoveAck(String message) {
     String[] parts = message.split(" ");
     if (parts.length < 2) {
@@ -161,11 +167,23 @@ public class Controller {
       ackCounts.remove(filename);
       index.removeFile(filename);
       logger.log(Level.INFO, "REMOVE_COMPLETE for " + filename);
-      // Here you would notify the client that removal is complete if you track client sessions
+      System.out.println("REMOVE_COMPLETE for " + filename);
+
+      // Notify the client
+      Socket clientSocket = removeRequestClients.remove(filename);
+      if (clientSocket != null) {
+        try {
+          PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+          out.println("REMOVE_COMPLETE");
+        } catch (IOException e) {
+          logger.log(Level.SEVERE, "Error sending REMOVE_COMPLETE to client: " + e.getMessage());
+        }
+      }
     } else {
       ackCounts.put(filename, count - 1);
     }
   }
+
 
   private void handleJoin(Socket socket, PrintWriter out, String message) {
     String[] parts = message.split(" ");
@@ -226,6 +244,7 @@ public class Controller {
         index.addFile(filename, selectedDstores, fileSize);
         ackCounts.put(filename, replicationFactor);
         storeStartTimes.put(filename, System.currentTimeMillis());
+        storeRequestClients.put(filename, clientSocket);  // Track client socket
         String response = "STORE_TO " + formatDstorePorts(selectedDstores);
         logger.log(Level.INFO, "Storing file: " + filename + " to Dstores: " + formatDstorePorts(selectedDstores));
         System.out.println("Storing file: " + filename + " to Dstores: " + formatDstorePorts(selectedDstores));
@@ -309,6 +328,17 @@ public class Controller {
       storeStartTimes.remove(filename);
       logger.log(Level.INFO, "STORE_COMPLETE for " + filename);
       System.out.println("STORE_COMPLETE for " + filename);
+
+      // Notify the client
+      Socket clientSocket = storeRequestClients.remove(filename);
+      if (clientSocket != null) {
+        try {
+          PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+          out.println("STORE_COMPLETE");
+        } catch (IOException e) {
+          logger.log(Level.SEVERE, "Error sending STORE_COMPLETE to client: " + e.getMessage());
+        }
+      }
     } else {
       ackCounts.put(filename, count - 1);
     }
