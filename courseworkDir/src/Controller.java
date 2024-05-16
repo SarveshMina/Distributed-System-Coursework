@@ -3,6 +3,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.logging.FileHandler;
@@ -22,6 +23,7 @@ public class Controller {
   private static final Logger logger = Logger.getLogger(Controller.class.getName());
   private int timeout;
   private int rebalance_period;
+  private final Map<String, ReentrantLock> fileLocks = new ConcurrentHashMap<>();
 
   public Controller(int port, int replicationFactor, int timeout, int rebalance_period) {
     this.port = port;
@@ -50,9 +52,12 @@ public class Controller {
       long currentTime = System.currentTimeMillis();
       storeStartTimes.forEach((filename, startTime) -> {
         if (currentTime - startTime > timeout && ackCounts.containsKey(filename) && ackCounts.get(filename) > 0) {
-          ackCounts.remove(filename);
-          index.removeFile(filename);
-          logger.log(Level.WARNING, "Timeout expired for STORE operation of file: " + filename);
+          synchronized (this) {
+            ackCounts.remove(filename);
+            index.removeFile(filename);
+            fileLocks.remove(filename);
+            logger.log(Level.WARNING, "Timeout expired for STORE operation of file: " + filename);
+          }
         }
       });
     }, 0, 1, TimeUnit.SECONDS);
@@ -126,32 +131,40 @@ public class Controller {
   private void handleRemoveRequest(Socket clientSocket, String message, PrintWriter out) {
     String[] parts = message.split(" ");
     if (parts.length < 2) {
-      out.println("ERROR_MALFORMED_COMMAND");
+      logger.log(Level.SEVERE, "Malformed REMOVE message: " + message);
       return;
     }
     String filename = parts[1];
-    Index.FileState fileState = index.getFileState(filename);
-    if (fileState == null) {
-      out.println("ERROR_FILE_DOES_NOT_EXIST");
-    } else {
-      List<Socket> dstoreSockets = new ArrayList<>(fileState.getDstoreSockets());
-      if (dstoreSockets.isEmpty() || dstores.size() < replicationFactor) {
-        out.println("ERROR_NOT_ENOUGH_DSTORES");
+
+    ReentrantLock lock = fileLocks.computeIfAbsent(filename, k -> new ReentrantLock());
+    lock.lock();
+    try {
+      Index.FileState fileState = index.getFileState(filename);
+      if (fileState == null || "IN_PROGRESS".equals(fileState.getStatus())) {
+        out.println("ERROR_FILE_DOES_NOT_EXIST");
       } else {
-        removeRequestClients.put(filename, clientSocket);  // Track client socket
-        ackCounts.put(filename, dstoreSockets.size());     // Initialize ack count
-        for (Socket dstore : dstoreSockets) {
-          Integer port = dstoreDetails.get(dstore);
-          if (port != null) {
-            try {
-              PrintWriter dstoreOut = new PrintWriter(dstore.getOutputStream(), true);
-              dstoreOut.println("REMOVE " + filename);
-            } catch (IOException e) {
-              logger.log(Level.SEVERE, "Error sending REMOVE command to Dstore: " + e.getMessage());
+        List<Socket> dstoreSockets = new ArrayList<>(fileState.getDstoreSockets());
+        if (dstoreSockets.isEmpty() || dstores.size() < replicationFactor) {
+          out.println("ERROR_NOT_ENOUGH_DSTORES");
+        } else {
+          removeRequestClients.put(filename, clientSocket);  // Track client socket
+          ackCounts.put(filename, dstoreSockets.size());     // Initialize ack count
+          index.markFileInProgress(filename);                // Mark file as in-progress
+          for (Socket dstore : dstoreSockets) {
+            Integer port = dstoreDetails.get(dstore);
+            if (port != null) {
+              try {
+                PrintWriter dstoreOut = new PrintWriter(dstore.getOutputStream(), true);
+                dstoreOut.println("REMOVE " + filename);
+              } catch (IOException e) {
+                logger.log(Level.SEVERE, "Error sending REMOVE command to Dstore: " + e.getMessage());
+              }
             }
           }
         }
       }
+    } finally {
+      lock.unlock();
     }
   }
 
@@ -162,25 +175,28 @@ public class Controller {
       return;
     }
     String filename = parts[1];
-    Integer count = ackCounts.getOrDefault(filename, 0);
-    if (count <= 1) {
-      ackCounts.remove(filename);
-      index.removeFile(filename);
-      logger.log(Level.INFO, "REMOVE_COMPLETE for " + filename);
-      System.out.println("REMOVE_COMPLETE for " + filename);
+    synchronized (this) {
+      Integer count = ackCounts.getOrDefault(filename, 0);
+      if (count <= 1) {
+        ackCounts.remove(filename);
+        index.removeFile(filename);
+        fileLocks.remove(filename);
+        logger.log(Level.INFO, "REMOVE_COMPLETE for " + filename);
+        System.out.println("REMOVE_COMPLETE for " + filename);
 
-      // Notify the client
-      Socket clientSocket = removeRequestClients.remove(filename);
-      if (clientSocket != null) {
-        try {
-          PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
-          out.println("REMOVE_COMPLETE " + filename);
-        } catch (IOException e) {
-          logger.log(Level.SEVERE, "Error sending REMOVE_COMPLETE to client: " + e.getMessage());
+        // Notify the client
+        Socket clientSocket = removeRequestClients.remove(filename);
+        if (clientSocket != null) {
+          try {
+            PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+            out.println("REMOVE_COMPLETE");
+          } catch (IOException e) {
+            logger.log(Level.SEVERE, "Error sending REMOVE_COMPLETE to client: " + e.getMessage());
+          }
         }
+      } else {
+        ackCounts.put(filename, count - 1);
       }
-    } else {
-      ackCounts.put(filename, count - 1);
     }
   }
 
@@ -197,94 +213,122 @@ public class Controller {
   private void handleStoreRequest(Socket clientSocket, String message, PrintWriter out) {
     String[] parts = message.split(" ");
     if (parts.length < 3) {
-      out.println("ERROR_MALFORMED_COMMAND");
+      logger.log(Level.SEVERE, "Malformed STORE message: " + message);
       return;
     }
     String filename = parts[1];
     int fileSize = Integer.parseInt(parts[2]);
 
-    if (index.getFileState(filename) != null && !index.getFileState(filename).getStatus().equals("COMPLETE")) {
-      System.out.println("File Already Exists");
-      out.println("ERROR_FILE_ALREADY_EXISTS");
-    } else if (dstores.size() < replicationFactor) {
-      System.out.println("Not enough Dstores");
-      out.println("ERROR_NOT_ENOUGH_DSTORES");
-    } else {
-      List<Socket> selectedDstores = selectDstores();
-      if (selectedDstores.size() < replicationFactor) {
+    ReentrantLock lock = fileLocks.computeIfAbsent(filename, k -> new ReentrantLock());
+    lock.lock();
+    try {
+      Index.FileState fileState = index.getFileState(filename);
+      if (fileState != null && "COMPLETE".equals(fileState.getStatus())) {
+        System.out.println("File Already Exists");
+        out.println("ERROR_FILE_ALREADY_EXISTS");
+      } else if (dstores.size() < replicationFactor) {
+        System.out.println("Not enough Dstores");
         out.println("ERROR_NOT_ENOUGH_DSTORES");
       } else {
-        index.addFile(filename, selectedDstores, fileSize);
-        ackCounts.put(filename, replicationFactor);
-        storeStartTimes.put(filename, System.currentTimeMillis());
-        storeRequestClients.put(filename, clientSocket);  // Track client socket
-        String response = "STORE_TO " + formatDstorePorts(selectedDstores);
-        logger.log(Level.INFO, "Storing file: " + filename + " to Dstores: " + formatDstorePorts(selectedDstores));
-        System.out.println("Storing file: " + filename + " to Dstores: " + formatDstorePorts(selectedDstores));
-        out.println(response);
+        List<Socket> selectedDstores = selectDstores();
+        if (selectedDstores.size() < replicationFactor) {
+          out.println("ERROR_NOT_ENOUGH_DSTORES");
+        } else {
+          if (fileState == null) {
+            index.addFile(filename, selectedDstores, fileSize);
+          } else {
+            index.markFileInProgress(filename);
+            fileState.setDstoreSockets(selectedDstores);
+            fileState.setFileSize(fileSize);
+          }
+          ackCounts.put(filename, replicationFactor);
+          storeStartTimes.put(filename, System.currentTimeMillis());
+          storeRequestClients.put(filename, clientSocket);  // Track client socket
+          String response = "STORE_TO " + formatDstorePorts(selectedDstores);
+          logger.log(Level.INFO, "Storing file: " + filename + " to Dstores: " + formatDstorePorts(selectedDstores));
+          System.out.println("Storing file: " + filename + " to Dstores: " + formatDstorePorts(selectedDstores));
+          out.println(response);
+        }
       }
+    } finally {
+      lock.unlock();
     }
   }
 
   private void handleLoadRequest(Socket clientSocket, String message, PrintWriter out) {
     String[] parts = message.split(" ");
     if (parts.length < 2) {
-      out.println("ERROR_MALFORMED_COMMAND");
+      logger.log(Level.SEVERE, "Malformed LOAD message: " + message);
       return;
     }
     String filename = parts[1];
-    Index.FileState fileState = index.getFileState(filename);
-    if (fileState == null) {
-      out.println("ERROR_FILE_DOES_NOT_EXIST");
-    } else if (fileState.getDstoreSockets().isEmpty() || dstores.size() < replicationFactor) {
-      out.println("ERROR_NOT_ENOUGH_DSTORES");
-    } else {
-      Socket selectedDstore = selectDstoreForLoad(fileState.getDstoreSockets());
-      if (selectedDstore == null) {
-        out.println("ERROR_LOAD");
+
+    ReentrantLock lock = fileLocks.computeIfAbsent(filename, k -> new ReentrantLock());
+    lock.lock();
+    try {
+      Index.FileState fileState = index.getFileState(filename);
+      if (fileState == null || "IN_PROGRESS".equals(fileState.getStatus())) {
+        out.println("ERROR_FILE_DOES_NOT_EXIST");
+      } else if (fileState.getDstoreSockets().isEmpty() || dstores.size() < replicationFactor) {
+        out.println("ERROR_NOT_ENOUGH_DSTORES");
       } else {
-        Integer port = dstoreDetails.get(selectedDstore);
-        if (port == null) {
-          out.println("ERROR_DSTORE_UNAVAILABLE");
+        Socket selectedDstore = selectDstoreForLoad(fileState.getDstoreSockets());
+        if (selectedDstore == null) {
+          out.println("ERROR_LOAD");
         } else {
-          out.println("LOAD_FROM " + port + " " + fileState.getFileSize());
+          Integer port = dstoreDetails.get(selectedDstore);
+          if (port == null) {
+            System.out.println("Dstore port not found");
+          } else {
+            out.println("LOAD_FROM " + port + " " + fileState.getFileSize());
+          }
         }
       }
+    } finally {
+      lock.unlock();
     }
   }
 
   private void handleReloadRequest(Socket clientSocket, String message, PrintWriter out) {
     String[] parts = message.split(" ");
     if (parts.length < 3) {
-      out.println("ERROR_MALFORMED_COMMAND");
+      logger.log(Level.SEVERE, "Malformed RELOAD message: " + message);
       return;
     }
     String filename = parts[1];
     int failedPort = Integer.parseInt(parts[2]); // Assuming the failed port is sent as part of the command
-    Index.FileState fileState = index.getFileState(filename);
-    if (fileState == null) {
-      out.println("ERROR_FILE_DOES_NOT_EXIST");
-    } else {
-      List<Socket> dstoreSockets = new ArrayList<>(fileState.getDstoreSockets()); // Copy to modify
-      dstoreSockets.removeIf(socket -> dstoreDetails.get(socket) != null && dstoreDetails.get(socket) == failedPort);
 
-      if (dstoreSockets.isEmpty() || dstores.size() < replicationFactor) {
-        out.println("ERROR_NOT_ENOUGH_DSTORES");
+    ReentrantLock lock = fileLocks.computeIfAbsent(filename, k -> new ReentrantLock());
+    lock.lock();
+    try {
+      Index.FileState fileState = index.getFileState(filename);
+      if (fileState == null || "IN_PROGRESS".equals(fileState.getStatus())) {
+        out.println("ERROR_FILE_DOES_NOT_EXIST");
       } else {
-        Socket selectedDstore = selectDstoreForLoad(dstoreSockets);
-        if (selectedDstore == null) {
-          out.println("ERROR_LOAD");
+        List<Socket> dstoreSockets = new ArrayList<>(fileState.getDstoreSockets()); // Copy to modify
+        dstoreSockets.removeIf(socket -> dstoreDetails.get(socket) != null && dstoreDetails.get(socket) == failedPort);
+
+        if (dstoreSockets.isEmpty() || dstores.size() < replicationFactor) {
+          out.println("ERROR_NOT_ENOUGH_DSTORES");
         } else {
-          Integer port = dstoreDetails.get(selectedDstore);
-          if (port == null) {
-            out.println("ERROR_DSTORE_UNAVAILABLE");
+          Socket selectedDstore = selectDstoreForLoad(dstoreSockets);
+          if (selectedDstore == null) {
+            out.println("ERROR_LOAD");
           } else {
-            out.println("LOAD_FROM " + port + " " + fileState.getFileSize());
+            Integer port = dstoreDetails.get(selectedDstore);
+            if (port == null) {
+              System.out.println("Dstore port not found");
+            } else {
+              out.println("LOAD_FROM " + port + " " + fileState.getFileSize());
+            }
           }
         }
       }
+    } finally {
+      lock.unlock();
     }
   }
+
 
   private void handleStoreAck(String message) {
     String[] parts = message.split(" ");
@@ -293,26 +337,28 @@ public class Controller {
       return;
     }
     String filename = parts[1];
-    Integer count = ackCounts.getOrDefault(filename, 0);
-    if (count <= 1) {
-      ackCounts.remove(filename);
-      index.markFileAsComplete(filename);
-      storeStartTimes.remove(filename);
-      logger.log(Level.INFO, "STORE_COMPLETE for " + filename);
-      System.out.println("STORE_COMPLETE for " + filename);
+    synchronized (this) {
+      Integer count = ackCounts.getOrDefault(filename, 0);
+      if (count <= 1) {
+        ackCounts.remove(filename);
+        index.markFileAsComplete(filename);
+        storeStartTimes.remove(filename);
+        logger.log(Level.INFO, "STORE_COMPLETE for " + filename);
+        System.out.println("STORE_COMPLETE for " + filename);
 
-      // Notify the client
-      Socket clientSocket = storeRequestClients.remove(filename);
-      if (clientSocket != null) {
-        try {
-          PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
-          out.println("STORE_COMPLETE " + filename);
-        } catch (IOException e) {
-          logger.log(Level.SEVERE, "Error sending STORE_COMPLETE to client: " + e.getMessage());
+        // Notify the client
+        Socket clientSocket = storeRequestClients.remove(filename);
+        if (clientSocket != null) {
+          try {
+            PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+            out.println("STORE_COMPLETE");
+          } catch (IOException e) {
+            logger.log(Level.SEVERE, "Error sending STORE_COMPLETE to client: " + e.getMessage());
+          }
         }
+      } else {
+        ackCounts.put(filename, count - 1);
       }
-    } else {
-      ackCounts.put(filename, count - 1);
     }
   }
 

@@ -59,8 +59,16 @@ public class Index {
       return dstoreSockets;
     }
 
+    public void setDstoreSockets(List<Socket> dstoreSockets) {
+      this.dstoreSockets = dstoreSockets;
+    }
+
     public int getFileSize() {
       return fileSize;
+    }
+
+    public void setFileSize(int fileSize) {
+      this.fileSize = fileSize;
     }
 
     public String getStatus() {

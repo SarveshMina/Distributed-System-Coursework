@@ -1,8 +1,8 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.SocketException;
-import java.util.logging.Level;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Logger;
 
 public class Dstore {
@@ -14,6 +14,7 @@ public class Dstore {
   private BufferedReader controllerIn;
   private static final Logger logger = Logger.getLogger(Dstore.class.getName());
   private int timeout;
+  private final ConcurrentHashMap<String, ReentrantLock> fileLocks = new ConcurrentHashMap<>();
 
   public Dstore(int port, int controllerPort, int timeout, String fileFolderPath) {
     this.port = port;
@@ -79,12 +80,19 @@ public class Dstore {
   }
 
   private void handleRemove(String filename) {
-    File file = new File(fileFolder, filename);
-    if (file.delete()) {
-      controllerOut.println("REMOVE_ACK " + filename);
-      System.out.println("File " + filename + " removed successfully.");
-    } else {
-      System.out.println("Failed to remove file: " + filename);
+    ReentrantLock lock = fileLocks.computeIfAbsent(filename, k -> new ReentrantLock());
+    lock.lock();
+    try {
+      File file = new File(fileFolder, filename);
+      if (file.delete()) {
+        controllerOut.println("REMOVE_ACK " + filename);
+        System.out.println("File " + filename + " removed successfully.");
+      } else {
+        System.out.println("Failed to remove file: " + filename);
+      }
+    } finally {
+      lock.unlock();
+      fileLocks.remove(filename);
     }
   }
 
@@ -134,96 +142,73 @@ public class Dstore {
     }
   }
 
-
   private void handleStore(String filename, int fileSize, Socket clientSocket, PrintWriter out) {
-    File file = new File(fileFolder, filename);
-    byte[] buffer = new byte[fileSize];  // Use a buffer the size of the expected file
+    ReentrantLock lock = fileLocks.computeIfAbsent(filename, k -> new ReentrantLock());
+    lock.lock();
+    try {
+      File file = new File(fileFolder, filename);
+      byte[] buffer = new byte[fileSize];  // Use a buffer the size of the expected file
 
-    try (FileOutputStream fileOut = new FileOutputStream(file);
-         InputStream rawInput = clientSocket.getInputStream()) {
+      try (FileOutputStream fileOut = new FileOutputStream(file);
+           InputStream rawInput = clientSocket.getInputStream()) {
 
-      out.println("ACK");  // Acknowledge that Dstore is ready to receive the file
+        out.println("ACK");  // Acknowledge that Dstore is ready to receive the file
 
-      int totalBytesRead = 0;
-      int bytesRead;
-      while (totalBytesRead < fileSize && (bytesRead = rawInput.read(buffer, totalBytesRead, fileSize - totalBytesRead)) != -1) {
-        fileOut.write(buffer, 0, bytesRead);
-        totalBytesRead += bytesRead;
+        int totalBytesRead = 0;
+        int bytesRead;
+        while (totalBytesRead < fileSize && (bytesRead = rawInput.read(buffer, totalBytesRead, fileSize - totalBytesRead)) != -1) {
+          fileOut.write(buffer, 0, bytesRead);
+          totalBytesRead += bytesRead;
+        }
+
+        if (totalBytesRead < fileSize) {
+          throw new IOException("Did not receive the full file");
+        }
+
+        controllerOut.println("STORE_ACK " + filename);
+        System.out.println("Stored file: " + filename + " and sent ACK.");
+      } catch (IOException e) {
+        System.out.println("Error storing file: " + filename + ": " + e.getMessage());
+        if (file.exists()) {
+          file.delete();  // Attempt to delete the file if an error occurs during storage
+        }
       }
-
-      if (totalBytesRead < fileSize) {
-        throw new IOException("Did not receive the full file");
-      }
-
-      controllerOut.println("STORE_ACK " + filename);
-      System.out.println("Stored file: " + filename + " and sent ACK.");
-    } catch (IOException e) {
-      System.out.println("Error storing file: " + filename + ": " + e.getMessage());
-      if (file.exists()) {
-        file.delete();  // Attempt to delete the file if an error occurs during storage
-      }
+    } finally {
+      lock.unlock();
+      fileLocks.remove(filename);
     }
   }
 
   private void handleLoadData(String filename, Socket clientSocket) throws IOException {
-    File file = new File(fileFolder, filename);
-    if (!file.exists()) {
-      PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
-      out.println("ERROR_FILE_DOES_NOT_EXIST");
-      clientSocket.close();  // Close the connection if the file does not exist
-      return;
-    }
-
-    try (InputStream fileInput = new FileInputStream(file);
-         OutputStream clientOutput = clientSocket.getOutputStream()) {
-      byte[] buffer = new byte[4096];
-      int bytesRead;
-      while ((bytesRead = fileInput.read(buffer)) != -1) {
-        clientOutput.write(buffer, 0, bytesRead);
+    ReentrantLock lock = fileLocks.computeIfAbsent(filename, k -> new ReentrantLock());
+    lock.lock();
+    try {
+      File file = new File(fileFolder, filename);
+      if (!file.exists()) {
+        PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+        out.println("ERROR_FILE_DOES_NOT_EXIST");
+        clientSocket.close();  // Close the connection if the file does not exist
+        return;
       }
-      clientOutput.flush();
-      System.out.println("File " + filename + " sent to client.");
-    } catch (IOException e) {
-      System.out.println("Failed to send file " + filename + ": " + e.getMessage());
-      throw e;
+
+      try (InputStream fileInput = new FileInputStream(file);
+           OutputStream clientOutput = clientSocket.getOutputStream()) {
+        byte[] buffer = new byte[4096];
+        int bytesRead;
+        while ((bytesRead = fileInput.read(buffer)) != -1) {
+          clientOutput.write(buffer, 0, bytesRead);
+        }
+        clientOutput.flush();
+        System.out.println("File " + filename + " sent to client.");
+      } catch (IOException e) {
+        System.out.println("Failed to send file " + filename + ": " + e.getMessage());
+        throw e;
+      }
+    } finally {
+      lock.unlock();
+      fileLocks.remove(filename);
     }
   }
-
-//  private void handleLoad(String filename, Socket clientSocket, PrintWriter out) {
-//    File file = new File(fileFolder, filename);
-//    if (!file.exists()) {
-//      out.println("ERROR_FILE_DOES_NOT_EXIST");
-//      return;
-//    }
-//
-//    long fileSize = file.length();  // Get the size of the file
-//    if (fileSize > Integer.MAX_VALUE) {
-//      out.println("ERROR_FILE_TOO_LARGE");
-//      return;
-//    }
-//
-//    try (InputStream fileInput = new FileInputStream(file);
-//         OutputStream clientOutput = clientSocket.getOutputStream()) {
-//      byte[] buffer = new byte[(int) fileSize];  // Allocate a buffer to hold the entire file
-//
-//      int bytesRead;
-//      int totalBytesRead = 0;
-//      while (totalBytesRead < fileSize && (bytesRead = fileInput.read(buffer, totalBytesRead, buffer.length - totalBytesRead)) != -1) {
-//        totalBytesRead += bytesRead;
-//      }
-//
-//      if (totalBytesRead < fileSize) {
-//        throw new IOException("Failed to read the full file");
-//      }
-//
-//      clientOutput.write(buffer);  // Send the entire file content in one go
-//      clientOutput.flush();
-//      System.out.println("File " + filename + " sent to client.");
-//    } catch (IOException e) {
-//      System.out.println("Failed to send file " + filename + ": " + e.getMessage());
-//      out.println("ERROR_SENDING_FILE");
-//    }
-//  }
 
   public static void main(String[] args) {
     if (args.length != 4) {

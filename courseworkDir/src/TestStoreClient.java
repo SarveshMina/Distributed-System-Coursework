@@ -36,16 +36,16 @@ public class TestStoreClient {
     try {
       client.connect();
       // Storing files
-      for (File file : files) {
-        try {
-          System.out.println("Attempting to store file: " + file.getName());
-          client.store(file);
-          System.out.println("File stored successfully: " + file.getName());
-        } catch (Exception e) {
-          System.err.println("Error storing file " + file.getName() + ": " + e.getMessage());
-          e.printStackTrace();
-        }
-      }
+//      for (File file : files) {
+//        try {
+//          System.out.println("Attempting to store file: " + file.getName());
+//          client.store(file);
+//          System.out.println("File stored successfully: " + file.getName());
+//        } catch (Exception e) {
+//          System.err.println("Error storing file " + file.getName() + ": " + e.getMessage());
+//          e.printStackTrace();
+//        }
+//      }
 
       // Loading the first file to check if load functionality works
       if (files.length > 0) {
@@ -60,11 +60,11 @@ public class TestStoreClient {
           fos.write(data);
           System.out.println("Loaded data written to: " + outputFile.getAbsolutePath());
         }
-
-        String filenameToRemove = files[0].getName();
-        System.out.println("Attempting to remove file: " + filenameToRemove);
-        client.remove(filenameToRemove);
-        System.out.println("File removed successfully: " + filenameToRemove);
+//
+////        String filenameToRemove = files[0].getName();
+////        System.out.println("Attempting to remove file: " + filenameToRemove);
+////        client.remove(filenameToRemove);
+////        System.out.println("File removed successfully: " + filenameToRemove);
       }
     } catch (IOException e) {
       System.err.println("Failed to connect or error during file storage/load: " + e.getMessage());
