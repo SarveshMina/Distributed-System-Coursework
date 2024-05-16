@@ -124,7 +124,17 @@ public class Controller {
     } catch (IOException e) {
       logger.log(Level.SEVERE, "Failed to handle connection: " + e.getMessage());
     } finally {
-      dstores.remove(socket);
+      handleDstoreDisconnection(socket);
+    }
+  }
+
+  private void handleDstoreDisconnection(Socket socket) {
+    dstores.remove(socket);
+    Integer dstorePort = dstoreDetails.remove(socket);
+    if (dstorePort != null) {
+      index.removeDstoreFromFiles(socket);
+      logger.log(Level.INFO, "Dstore on port " + dstorePort + " disconnected and removed.");
+      System.out.println("Dstore on port " + dstorePort + " disconnected and removed.");
     }
   }
 
@@ -313,7 +323,7 @@ public class Controller {
         } else {
           Socket selectedDstore = selectDstoreForLoad(dstoreSockets);
           if (selectedDstore == null) {
-            out.println("ERROR_LOAD");
+            System.out.println("Dstore not found for reload");
           } else {
             Integer port = dstoreDetails.get(selectedDstore);
             if (port == null) {
@@ -328,7 +338,6 @@ public class Controller {
       lock.unlock();
     }
   }
-
 
   private void handleStoreAck(String message) {
     String[] parts = message.split(" ");

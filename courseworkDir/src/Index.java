@@ -44,6 +44,10 @@ public class Index {
         .collect(Collectors.toList());
   }
 
+  public void removeDstoreFromFiles(Socket dstore) {
+    fileStates.values().forEach(fileState -> fileState.getDstoreSockets().remove(dstore));
+  }
+
   public static class FileState {
     private List<Socket> dstoreSockets;
     private int fileSize;
