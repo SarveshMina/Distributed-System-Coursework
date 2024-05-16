@@ -119,6 +119,54 @@ public class Controller {
   }
 
 
+  private void handleRemoveRequest (Socket clientSocket, String message, PrintWriter out) {
+    String[] parts = message.split(" ");
+    if (parts.length < 2) {
+      out.println("ERROR_MALFORMED_COMMAND");
+      return;
+    }
+    String filename = parts[1];
+    Index.FileState fileState = index.getFileState(filename);
+    if (fileState == null) {
+      out.println("ERROR_FILE_DOES_NOT_EXIST");
+    } else {
+      List<Socket> dstoreSockets = new ArrayList<>(fileState.getDstoreSockets());
+      if (dstoreSockets.isEmpty() || dstores.size() < replicationFactor) {
+        out.println("ERROR_NOT_ENOUGH_DSTORES");
+      } else {
+        for (Socket dstore : dstoreSockets) {
+          Integer port = dstoreDetails.get(dstore);
+          if (port != null) {
+            try {
+              PrintWriter dstoreOut = new PrintWriter(dstore.getOutputStream(), true);
+              dstoreOut.println("REMOVE " + filename);
+            } catch (IOException e) {
+              logger.log(Level.SEVERE, "Error sending REMOVE command to Dstore: " + e.getMessage());
+            }
+          }
+        }
+      }
+    }
+  }
+
+  private void handleRemoveAck(String message) {
+    String[] parts = message.split(" ");
+    if (parts.length < 2) {
+      logger.log(Level.SEVERE, "Malformed REMOVE_ACK message: " + message);
+      return;
+    }
+    String filename = parts[1];
+    Integer count = ackCounts.getOrDefault(filename, 0);
+    if (count <= 1) {
+      ackCounts.remove(filename);
+      index.removeFile(filename);
+      logger.log(Level.INFO, "REMOVE_COMPLETE for " + filename);
+      // Here you would notify the client that removal is complete if you track client sessions
+    } else {
+      ackCounts.put(filename, count - 1);
+    }
+  }
+
   private void handleJoin(Socket socket, PrintWriter out, String message) {
     String[] parts = message.split(" ");
     int dstorePort = Integer.parseInt(parts[1]);
@@ -127,6 +175,32 @@ public class Controller {
     out.println("ACK");
     System.out.println("Dstore joined from: " + dstorePort);
     logger.log(Level.INFO, "Dstore joined from: " + socket.getInetAddress().getHostAddress() + ":" + dstorePort);
+  }
+
+  private void handleRemove(Socket socket, PrintWriter out, String message) {
+    String[] parts = message.split(" ");
+    String filename = parts[1];
+    Index.FileState fileState = index.getFileState(filename);
+    if (fileState == null) {
+      out.println("ERROR_FILE_DOES_NOT_EXIST");
+    } else {
+      List<Socket> dstoreSockets = new ArrayList<>(fileState.getDstoreSockets());
+      if (dstoreSockets.isEmpty() || dstores.size() < replicationFactor) {
+        out.println("ERROR_NOT_ENOUGH_DSTORES");
+      } else {
+        for (Socket dstore : dstoreSockets) {
+          Integer port = dstoreDetails.get(dstore);
+          if (port != null) {
+            try {
+              PrintWriter dstoreOut = new PrintWriter(dstore.getOutputStream(), true);
+              dstoreOut.println("REMOVE " + filename);
+            } catch (IOException e) {
+              logger.log(Level.SEVERE, "Error sending REMOVE command to Dstore: " + e.getMessage());
+            }
+          }
+        }
+      }
+    }
   }
 
   private void handleStoreRequest(Socket clientSocket, String message, PrintWriter out) {
@@ -139,15 +213,17 @@ public class Controller {
     int fileSize = Integer.parseInt(parts[2]);
 
     if (index.getFileState(filename) != null && !index.getFileState(filename).getStatus().equals("COMPLETE")) {
+      System.out.println("File Already Exists");
       out.println("ERROR_FILE_ALREADY_EXISTS");
     } else if (dstores.size() < replicationFactor) {
+      System.out.println("Not enough Dstores");
       out.println("ERROR_NOT_ENOUGH_DSTORES");
     } else {
       List<Socket> selectedDstores = selectDstores();
       if (selectedDstores.size() < replicationFactor) {
         out.println("ERROR_NOT_ENOUGH_DSTORES");
       } else {
-        index.addFile(filename, new ArrayList<>(selectedDstores), fileSize);
+        index.addFile(filename, selectedDstores, fileSize);
         ackCounts.put(filename, replicationFactor);
         storeStartTimes.put(filename, System.currentTimeMillis());
         String response = "STORE_TO " + formatDstorePorts(selectedDstores);
@@ -218,54 +294,6 @@ public class Controller {
     }
   }
 
-
-  private void handleRemoveRequest(Socket clientSocket, String message, PrintWriter out) throws IOException {
-    String[] parts = message.split(" ");
-    if (parts.length < 2) {
-      out.println("ERROR_MALFORMED_COMMAND");
-      return;
-    }
-    String filename = parts[1];
-    Index.FileState fileState = index.getFileState(filename);
-    if (fileState == null) {
-      out.println("ERROR_FILE_DOES_NOT_EXIST");
-    } else {
-      // Set the file state to removing
-      fileState.setStatus("REMOVING");
-      List<Socket> dstoreSockets = fileState.getDstoreSockets();
-      for (Socket dstore : dstoreSockets) {
-        PrintWriter dstoreOut = new PrintWriter(dstore.getOutputStream(), true);
-        dstoreOut.println("REMOVE " + filename);
-      }
-      ackCounts.put(filename, dstoreSockets.size());
-    }
-  }
-
-  // Method to handle REMOVE_ACK from Dstores
-  private void handleRemoveAck(String message) {
-    String[] parts = message.split(" ");
-    if (parts.length < 2) {
-      logger.log(Level.SEVERE, "Malformed REMOVE_ACK message: " + message);
-      return;
-    }
-    String filename = parts[1];
-    Integer count = ackCounts.getOrDefault(filename, 0);
-    if (count <= 1) {
-      ackCounts.remove(filename);
-      index.removeFile(filename);
-      index.getFileState(filename).getDstoreSockets().forEach(socket -> {
-        try {
-          PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-          out.println("REMOVE_COMPLETE " + filename);
-        } catch (IOException e) {
-          logger.log(Level.SEVERE, "Error sending REMOVE_COMPLETE to Dstore", e);
-        }
-      });
-      logger.log(Level.INFO, "REMOVE_COMPLETE for " + filename);
-    } else {
-      ackCounts.put(filename, count - 1);
-    }
-  }
 
   private void handleStoreAck(String message) {
     String[] parts = message.split(" ");

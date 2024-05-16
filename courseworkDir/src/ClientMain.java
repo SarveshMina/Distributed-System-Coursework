@@ -51,20 +51,20 @@ public class ClientMain {
         }
       }
 
-//      String list[] = null;
-//      try { list = list(client); } catch(IOException e) { e.printStackTrace(); }
-//
-//      for (int i = 0; i < list.length/4; i++) {
-//        String fileToRemove = list[random.nextInt(list.length)];
-//        try {
-//          client.remove(fileToRemove);
-//        } catch (Exception e) {
-//          System.out.println("Error remove file " + fileToRemove);
-//          e.printStackTrace();
-//        }
-//      }
-//
-//      try { list = list(client); } catch(IOException e) { e.printStackTrace(); }
+      String list[] = null;
+      try { list = list(client); } catch(IOException e) { e.printStackTrace(); }
+
+      for (int i = 0; i < list.length/4; i++) {
+        String fileToRemove = list[random.nextInt(list.length)];
+        try {
+          client.remove(fileToRemove);
+        } catch (Exception e) {
+          System.out.println("Error remove file " + fileToRemove);
+          e.printStackTrace();
+        }
+      }
+
+      try { list = list(client); } catch(IOException e) { e.printStackTrace(); }
 
     } catch(IOException e) {
       e.printStackTrace();

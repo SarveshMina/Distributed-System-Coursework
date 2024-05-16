@@ -14,6 +14,12 @@ public class Index {
     return state != null && "IN_PROGRESS".equals(state.status);
   }
 
+  public void markFileInProgress(String filename) {
+    FileState state = fileStates.get(filename);
+    if (state != null) {
+      state.status = "IN_PROGRESS";
+    }
+  }
   public void markFileAsComplete(String filename) {
     FileState state = fileStates.get(filename);
     if (state != null) {

@@ -32,13 +32,13 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
     "WebServerToolWindowFactoryState": "false",
-    "last_opened_file_path": "C:/Users/Sarvesh Mina/OneDrive/Desktop/Everything/finalProject/Distributed-System-Coursework/courseworkDir/lib",
+    "last_opened_file_path": "C:/Users/Sarvesh Mina/OneDrive/Desktop/Everything/finalProject/Distributed-System-Coursework/courseworkDir",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "project.structure.last.edited": "SDKs",
+    "project.structure.last.edited": "Libraries",
     "project.structure.proportion": "0.0",
     "project.structure.side.proportion": "0.16666667",
     "settings.editor.selected.configurable": "preferences.lookFeel",
@@ -47,6 +47,7 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\Sarvesh Mina\OneDrive\Desktop\Everything\finalProject\Distributed-System-Coursework\courseworkDir" />
       <recent name="C:\Users\Sarvesh Mina\OneDrive\Desktop\Everything\finalProject\Distributed-System-Coursework\courseworkDir\lib" />
       <recent name="C:\Users\Sarvesh Mina\OneDrive\Desktop\Everything\finalProject\Distributed-System-Coursework\courseworkDir\to_store" />
       <recent name="C:\Users\Sarvesh Mina\OneDrive\Desktop\Everything\finalProject\Distributed-System-Coursework\courseworkDir\to_store2" />
@@ -58,7 +59,15 @@
       <recent name="" />
     </key>
   </component>
-  <component name="RunManager" selected="Application.Controller">
+  <component name="RunManager" selected="Application.TestStoreClient">
+    <configuration name="ClientMain" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="ClientMain" />
+      <module name="courseworkDir" />
+      <option name="PROGRAM_PARAMETERS" value="4000 3000" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="Controller" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="MAIN_CLASS_NAME" value="Controller" />
       <module name="courseworkDir" />
@@ -78,7 +87,7 @@
     <configuration name="TestStoreClient" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="MAIN_CLASS_NAME" value="TestStoreClient" />
       <module name="courseworkDir" />
-      <option name="PROGRAM_PARAMETERS" value="4000 10000 to_store" />
+      <option name="PROGRAM_PARAMETERS" value="4000 10000 to_store2" />
       <method v="2">
         <option name="Make" enabled="true" />
       </method>
@@ -92,6 +101,7 @@
       </method>
     </configuration>
     <list>
+      <item itemvalue="Application.ClientMain" />
       <item itemvalue="Application.TestStoreClient2" />
       <item itemvalue="Application.TestStoreClient" />
       <item itemvalue="Application.Controller" />
@@ -101,6 +111,7 @@
       <list>
         <item itemvalue="Application.TestStoreClient" />
         <item itemvalue="Application.Controller" />
+        <item itemvalue="Application.ClientMain" />
         <item itemvalue="Application.TestStoreClient2" />
         <item itemvalue="Application.Dstore" />
       </list>
@@ -120,6 +131,9 @@
       <workItem from="1715407869508" duration="12231000" />
       <workItem from="1715538117562" duration="4293000" />
       <workItem from="1715542561440" duration="17769000" />
+      <workItem from="1715782877529" duration="313000" />
+      <workItem from="1715784292815" duration="12722000" />
+      <workItem from="1715815046956" duration="3938000" />
     </task>
     <servers />
   </component>

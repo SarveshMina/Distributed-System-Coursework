@@ -49,7 +49,7 @@ public class TestStoreClient {
 
       // Loading the first file to check if load functionality works
       if (files.length > 0) {
-        String filenameToLoad = files[0].getName();
+        String filenameToLoad = files[1].getName();
         System.out.println("Attempting to load file: " + filenameToLoad);
         byte[] data = client.load(filenameToLoad);
         System.out.println("File loaded successfully: " + filenameToLoad + ", size: " + data.length + " bytes");
@@ -60,6 +60,11 @@ public class TestStoreClient {
           fos.write(data);
           System.out.println("Loaded data written to: " + outputFile.getAbsolutePath());
         }
+
+        String filenameToRemove = files[0].getName();
+        System.out.println("Attempting to remove file: " + filenameToRemove);
+        client.remove(filenameToRemove);
+        System.out.println("File removed successfully: " + filenameToRemove);
       }
     } catch (IOException e) {
       System.err.println("Failed to connect or error during file storage/load: " + e.getMessage());
