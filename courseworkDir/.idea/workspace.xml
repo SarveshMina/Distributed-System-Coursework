@@ -20,47 +20,52 @@
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
   </component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="CurrentFile" />
+  </component>
   <component name="ProjectId" id="2gHSUyBJAUJuWh5smESouBbvL5k" />
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "WebServerToolWindowFactoryState": "false",
-    "last_opened_file_path": "C:/Users/Sarvesh Mina/OneDrive/Desktop/Everything/finalProject/Distributed-System-Coursework/courseworkDir/src",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "project.structure.last.edited": "Libraries",
-    "project.structure.proportion": "0.0",
-    "project.structure.side.proportion": "0.16666667",
-    "settings.editor.selected.configurable": "preferences.lookFeel",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;extract.method.default.visibility&quot;: &quot;private&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/Sarvesh Mina/OneDrive/Desktop/Everything/finalProject/Distributed-System-Coursework/courseworkDir/ss&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;project.structure.last.edited&quot;: &quot;Libraries&quot;,
+    &quot;project.structure.proportion&quot;: &quot;0.0&quot;,
+    &quot;project.structure.side.proportion&quot;: &quot;0.16666667&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;profiler.jvm&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\Sarvesh Mina\OneDrive\Desktop\Everything\finalProject\Distributed-System-Coursework\courseworkDir\ss" />
       <recent name="C:\Users\Sarvesh Mina\OneDrive\Desktop\Everything\finalProject\Distributed-System-Coursework\courseworkDir\src" />
       <recent name="C:\Users\Sarvesh Mina\OneDrive\Desktop\Everything\finalProject\Distributed-System-Coursework\courseworkDir" />
       <recent name="C:\Users\Sarvesh Mina\OneDrive\Desktop\Everything\finalProject\Distributed-System-Coursework\courseworkDir\lib" />
       <recent name="C:\Users\Sarvesh Mina\OneDrive\Desktop\Everything\finalProject\Distributed-System-Coursework\courseworkDir\to_store" />
-      <recent name="C:\Users\Sarvesh Mina\OneDrive\Desktop\Everything\finalProject\Distributed-System-Coursework\courseworkDir\to_store2" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\Sarvesh Mina\OneDrive\Desktop\Everything\finalProject\Distributed-System-Coursework\courseworkDir\src" />
       <recent name="C:\Users\Sarvesh Mina\OneDrive\Desktop\Everything\finalProject\Distributed-System-Coursework\courseworkDir\to_store2" />
     </key>
     <key name="CopyClassDialog.RECENTS_KEY">
       <recent name="" />
     </key>
   </component>
-  <component name="RunManager" selected="Application.TestStoreClient">
+  <component name="RunManager" selected="Application.Controller">
     <configuration name="ClientMain" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="MAIN_CLASS_NAME" value="ClientMain" />
       <module name="courseworkDir" />
@@ -72,7 +77,7 @@
     <configuration name="Controller" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="MAIN_CLASS_NAME" value="Controller" />
       <module name="courseworkDir" />
-      <option name="PROGRAM_PARAMETERS" value="4000 3 5000 1" />
+      <option name="PROGRAM_PARAMETERS" value="5000 1 15000 15000" />
       <method v="2">
         <option name="Make" enabled="true" />
       </method>
@@ -85,35 +90,15 @@
         <option name="Make" enabled="true" />
       </method>
     </configuration>
-    <configuration name="TestStoreClient" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
-      <option name="MAIN_CLASS_NAME" value="TestStoreClient" />
-      <module name="courseworkDir" />
-      <option name="PROGRAM_PARAMETERS" value="4000 10000 to_store2" />
-      <method v="2">
-        <option name="Make" enabled="true" />
-      </method>
-    </configuration>
-    <configuration name="TestStoreClient2" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
-      <option name="MAIN_CLASS_NAME" value="TestStoreClient2" />
-      <module name="courseworkDir" />
-      <option name="PROGRAM_PARAMETERS" value="4000 5001 to_store2" />
-      <method v="2">
-        <option name="Make" enabled="true" />
-      </method>
-    </configuration>
     <list>
       <item itemvalue="Application.ClientMain" />
-      <item itemvalue="Application.TestStoreClient2" />
-      <item itemvalue="Application.TestStoreClient" />
       <item itemvalue="Application.Controller" />
       <item itemvalue="Application.Dstore" />
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Application.TestStoreClient" />
         <item itemvalue="Application.Controller" />
         <item itemvalue="Application.ClientMain" />
-        <item itemvalue="Application.TestStoreClient2" />
         <item itemvalue="Application.Dstore" />
       </list>
     </recent_temporary>
@@ -135,6 +120,9 @@
       <workItem from="1715782877529" duration="313000" />
       <workItem from="1715784292815" duration="12722000" />
       <workItem from="1715815046956" duration="18013000" />
+      <workItem from="1715870282669" duration="1370000" />
+      <workItem from="1718652327803" duration="36424000" />
+      <workItem from="1718762600372" duration="8284000" />
     </task>
     <servers />
   </component>
@@ -151,5 +139,9 @@
         </entry>
       </map>
     </option>
+  </component>
+  <component name="XSLT-Support.FileAssociations.UIState">
+    <expand />
+    <select />
   </component>
 </project>
